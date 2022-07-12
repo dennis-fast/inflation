@@ -81,7 +81,12 @@ tm_shape(World) +
 #     tm_polygons("wb",palette=pal)
 
 ```
-## Racing Bar Chart 
+## Historical GDP data
+In this section, we will take a look at historical GDP data from 1960 to the most recent data from 2021 by the World Bank. To begin with, we look at animated data from the top 20 countries in terms of GDP volume over this time period using animated racing bar chart. Then we look at the development of GDP in the same period of time grouped by the regions. Counties are combined into regions according to World Bank, which were illustrated on the map in the previous section.
+
+The GDP data itself were imported from World Bank database using API via WDI library.
+
+### Racing Bar Chart 
 
 ```{r eval = FALSE, include=TRUE}
 
@@ -186,9 +191,93 @@ anim_save(
 
 ```
 
-In this section, there is an animated graph of top-20 countries by GDP from 1960 to 2021. The GDP data are imported from worldbank using API from WDI library. The chart is plotted using ggplot, animated using gganimate and saved to mp4 using av.
+As mentioned before, the animated graph shows top-20 countries by GDP volume from 1960 to 2021 according to World Bank data. The colors indicate the world regions.
+
+The static plot was created using ggplot library, which then was rendered using gganimate library and finally converted to mp4 using av library. The country flags were added via the ggimage library.
+
+In 1960, USA is the clear economical world power, which GDP is contantly growing with the time, but there are many other countries, which GDP is growing more rapidly, for example China, which GDP volume is currently almost caught up the USA's value. On the other hand, there are a number of european counties, which GDP is growing constantly, slower than China's but much faster then the USA's, which combined GDP volume is comparable high to that of the US and China.
 
 <iframe width="720" height="480" src="gdp_barchart_race.mp4" align="middle" frameborder="0" sandbox></iframe>
+
+### Histirical GDP growth by region
+
+```{r eval = FALSE, include=TRUE}
+
+library(WDI)
+library(dplyr)
+library(tidyr)
+library(sf)
+library(rnaturalearth)
+library(janitor)
+library(ggplot2)
+library(gganimate)
+library(gifski)
+library(ggimage)
+library(av)
+library(ggthemes)
+
+start_year <- 1960
+end_year <- 2021
+worldbank_data = WDI("NY.GDP.MKTP.CD",  country = "all" ,start=start_year,end=end_year)
+
+worldbank_data=worldbank_data%>%
+  rename(gdp = 'NY.GDP.MKTP.CD')
+
+world_regions <- ne_countries(scale = "medium", returnclass = "sf")%>%
+  filter(sovereignt!="Antarctica")
+
+gdp_ready <- worldbank_data%>%
+  left_join(st_drop_geometry(world_regions[c("iso_a2","region_wb")]),by=c("iso2c"="iso_a2"))%>%
+  rename(Region = region_wb)%>%
+  drop_na()
+
+library(plyr)
+
+groupColumns <- c("Region","year")
+dataColumns <- c("gdp")
+gdp_regions <- ddply(gdp_ready, groupColumns, function(x) colSums(x[dataColumns]))
+
+# Data for plot
+gdp_regions$Region <- factor(gdp_regions$Region,
+                             level = c('Sub-Saharan Africa',
+                                       'Middle East & North Africa',
+                                       'Europe & Central Asia',
+                                       'East Asia & Pacific',
+                                       'North America',
+                                       'Latin America & Caribbean',
+                                       'South Asia'
+                                       )
+                             )
+
+gdp_tot <- sum(gdp_regions$gdp)
+
+pdat = gdp_regions %>% 
+  group_by(year) %>% 
+  mutate(gdp_pct = gdp/sum(gdp)) %>% 
+  arrange(Region) %>% 
+  # Get cumulative value of cc
+  mutate(gdp_cum = cumsum(gdp) - 0.5*gdp) %>% 
+  mutate(gdp_pct_cum = cumsum(gdp_pct) - 0.5*gdp_pct) %>% 
+  mutate(gdp_sum_year = sum(gdp)/1e9) %>% 
+  ungroup
+
+png(filename="polar_gdp_plot.png")
+ggplot(pdat, aes(x=gdp_pct_cum, y=year, fill=Region, alpha=gdp_sum_year)) +
+  geom_tile(aes(width=gdp_pct), colour="white", size=0.3) +
+  coord_polar() +
+  theme_void() +
+  theme(axis.text.y=element_text(angle=0, colour="grey40", size=9),
+        axis.ticks.y=element_line(),
+        axis.ticks.length=unit(0.1,"cm")) +
+  scale_alpha_continuous(range=c(0.5,1)) +
+  scale_color_tableau() +
+  scale_fill_tableau()
+dev.off()
+```
+
+By looking at the circular plot, the shares of the individual regions can be estimated very well. In the 1960s, the GDP of the North American region was 50%, the European region had shares about 25% of the total, the other regions the remaining 25%. Over time, the share of the Northern American region in total GDP shrank to about a quarter. In the European region, there were three large jumps in GDP value during this period, with the share returning to the 1960 value. The East Asian region had a steady increase in GDP with the jump in the 1990s. The other regions had steady increases in share over the years.
+
+![](polar_gdp_plot.png){#id .class width=70% height=70%}
 
 ## Relationship between selected Worllbank Indicators
 
