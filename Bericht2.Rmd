@@ -261,18 +261,15 @@ pdat = gdp_regions %>%
   mutate(gdp_sum_year = sum(gdp)/1e9) %>% 
   ungroup
 
-png(filename="polar_gdp_plot.png")
-ggplot(pdat, aes(x=gdp_pct_cum, y=year, fill=Region, alpha=gdp_sum_year)) +
+ggplot(pdat, aes(x=gdp_pct_cum, y=year, fill=Region)) +
   geom_tile(aes(width=gdp_pct), colour="white", size=0.3) +
   coord_polar() +
   theme_void() +
   theme(axis.text.y=element_text(angle=0, colour="grey40", size=9),
         axis.ticks.y=element_line(),
         axis.ticks.length=unit(0.1,"cm")) +
-  scale_alpha_continuous(range=c(0.5,1)) +
-  scale_color_tableau() +
-  scale_fill_tableau()
-dev.off()
+  scale_color_manual(values = c("#a87c9f", "#85b6b2", "#e49444", "#6a9f58", "#5778a4", "#d1615d", "#e7ca60")) +
+  scale_fill_manual(values = c("#a87c9f", "#85b6b2", "#e49444", "#6a9f58", "#5778a4", "#d1615d", "#e7ca60"))
 ```
 
 By looking at the circular plot, the shares of the individual regions can be estimated very well. In the 1960s, the GDP of the North American region was 50%, the European region had shares about 25% of the total, the other regions the remaining 25%. Over time, the share of the Northern American region in total GDP shrank to about a quarter. In the European region, there were three large jumps in GDP value during this period, with the share returning to the 1960 value. The East Asian region had a steady increase in GDP with the jump in the 1990s. The other regions had steady increases in share over the years.
